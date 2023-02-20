@@ -17,6 +17,8 @@
 
 #include <X11/Xlib.h>
 
+#include "dwmstatus.h"
+
 char *tzwarsaw = "Europe/Warsaw";
 
 static Display *dpy;
@@ -180,6 +182,53 @@ char *get_freespace(char *mntpt){
     return(smprintf("%.0f", (used/total*100)));
 }
 
+
+void get_cpustat(struct cpustat* st) {
+	FILE *fp;
+	char cpun[255];
+	
+	fp = fopen("/proc/stat", "r");
+    fscanf(fp, "%s %lu %lu %lu %lu %lu %lu %lu", cpun, &(st->t_user), &(st->t_nice),
+        &(st->t_system), &(st->t_idle), &(st->t_iowait), &(st->t_irq), &(st->t_softirq));
+	fclose(fp);
+}
+
+static inline void cpustat_init(struct cpustat** st) {
+    *st = (struct cpustat *) malloc(sizeof(struct cpustat));
+    if (*st == NULL) {
+		perror("malloc");
+		exit(1);
+	}
+	get_cpustat(*st);
+}
+
+long calculate_load(struct cpustat *prev, struct cpustat *cur)
+{
+    int idle_prev = (prev->t_idle) + (prev->t_iowait);
+    int idle_cur = (cur->t_idle) + (cur->t_iowait);
+
+    int nidle_prev = (prev->t_user) + (prev->t_nice) + (prev->t_system) + (prev->t_irq) + (prev->t_softirq);
+    int nidle_cur = (cur->t_user) + (cur->t_nice) + (cur->t_system) + (cur->t_irq) + (cur->t_softirq);
+
+    int total_prev = idle_prev + nidle_prev;
+    int total_cur = idle_cur + nidle_cur;
+
+    double totald = (double) total_cur - (double) total_prev;
+    double idled = (double) idle_cur - (double) idle_prev;
+
+    double cpu_perc = (1000 * (totald - idled) / totald + 1) / 10;
+
+    return (long)cpu_perc;
+}
+
+void update_cpustat(struct cpustat **prev, struct cpustat **cur) {
+	free(*prev);
+	*prev = *cur;
+	
+	cpustat_init(cur);
+	get_cpustat(*cur);
+}
+
 int
 main(void)
 {
@@ -188,20 +237,29 @@ main(void)
 	char *kbmap;
 	int vol;
 	char* du;
+	struct cpustat *cpu_prev;
+	struct cpustat *cpu_cur;
+	long load;
+	
 
 	if (!(dpy = XOpenDisplay(NULL))) {
 		fprintf(stderr, "dwmstatus: cannot open display.\n");
 		return 1;
 	}
 
-	for (;;usleep(250000)) {
+	cpustat_init(&cpu_prev);
+	cpustat_init(&cpu_cur);
+
+	for (;;sleep(1)) {
 		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
 		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		vol   = get_vol();
 		du    = get_freespace("/");
+		update_cpustat(&cpu_prev, &cpu_cur);
+		load = calculate_load(cpu_prev, cpu_cur);
 
-		status = smprintf("\uF11C %s | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
-				kbmap, du, vol, tmwar);
+		status = smprintf(" \uF11C %s | \uF2DB %ld%% | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
+				kbmap, load, du, vol, tmwar);
 		setstatus(status);
 
 		free(kbmap);
@@ -209,6 +267,9 @@ main(void)
 		free(status);
 		free(du);
 	}
+
+	free(cpu_prev);
+	free(cpu_cur);
 
 	XCloseDisplay(dpy);
 
