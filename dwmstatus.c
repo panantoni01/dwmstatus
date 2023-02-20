@@ -195,12 +195,12 @@ main(void)
 	}
 
 	for (;;usleep(250000)) {
-		tmwar = mktimes(" %a %d %b %Y %H:%M:%S %Z ", tzwarsaw);
+		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
 		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		vol   = get_vol();
 		du    = get_freespace("/");
 
-		status = smprintf("K:%s D:%s V:%d T:%s",
+		status = smprintf("\uF11C %s | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
 				kbmap, du, vol, tmwar);
 		setstatus(status);
 
