@@ -165,6 +165,21 @@ get_vol(void)
     return vol;
 }
 
+#include <sys/statvfs.h>
+
+char *get_freespace(char *mntpt){
+    struct statvfs data;
+    double total, used = 0;
+
+    if ( (statvfs(mntpt, &data)) < 0){
+		fprintf(stderr, "can't get info on disk.\n");
+		return("?");
+    }
+    total = (data.f_blocks * data.f_frsize);
+    used = (data.f_blocks - data.f_bfree) * data.f_frsize ;
+    return(smprintf("%.0f", (used/total*100)));
+}
+
 int
 main(void)
 {
@@ -172,6 +187,7 @@ main(void)
 	char *tmwar;
 	char *kbmap;
 	int vol;
+	char* du;
 
 	if (!(dpy = XOpenDisplay(NULL))) {
 		fprintf(stderr, "dwmstatus: cannot open display.\n");
@@ -182,14 +198,16 @@ main(void)
 		tmwar = mktimes(" %a %d %b %Y %H:%M:%S %Z ", tzwarsaw);
 		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		vol   = get_vol();
+		du    = get_freespace("/");
 
-		status = smprintf("K:%s V:%d T:%s",
-				kbmap, vol, tmwar);
+		status = smprintf("K:%s D:%s V:%d T:%s",
+				kbmap, du, vol, tmwar);
 		setstatus(status);
 
 		free(kbmap);
 		free(tmwar);
 		free(status);
+		free(du);
 	}
 
 	XCloseDisplay(dpy);
