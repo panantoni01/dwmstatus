@@ -17,9 +17,7 @@
 
 #include <X11/Xlib.h>
 
-char *tzargentina = "America/Buenos_Aires";
-char *tzutc = "UTC";
-char *tzberlin = "Europe/Berlin";
+char *tzwarsaw = "Europe/Warsaw";
 
 static Display *dpy;
 
@@ -81,16 +79,6 @@ setstatus(char *str)
 	XSync(dpy, False);
 }
 
-char *
-loadavg(void)
-{
-	double avgs[3];
-
-	if (getloadavg(avgs, 3) < 0)
-		return smprintf("");
-
-	return smprintf("%.2f %.2f %.2f", avgs[0], avgs[1], avgs[2]);
-}
 
 char *
 readfile(char *base, char *file)
@@ -116,68 +104,6 @@ readfile(char *base, char *file)
 }
 
 char *
-getbattery(char *base)
-{
-	char *co, status;
-	int descap, remcap;
-
-	descap = -1;
-	remcap = -1;
-
-	co = readfile(base, "present");
-	if (co == NULL)
-		return smprintf("");
-	if (co[0] != '1') {
-		free(co);
-		return smprintf("not present");
-	}
-	free(co);
-
-	co = readfile(base, "charge_full_design");
-	if (co == NULL) {
-		co = readfile(base, "energy_full_design");
-		if (co == NULL)
-			return smprintf("");
-	}
-	sscanf(co, "%d", &descap);
-	free(co);
-
-	co = readfile(base, "charge_now");
-	if (co == NULL) {
-		co = readfile(base, "energy_now");
-		if (co == NULL)
-			return smprintf("");
-	}
-	sscanf(co, "%d", &remcap);
-	free(co);
-
-	co = readfile(base, "status");
-	if (!strncmp(co, "Discharging", 11)) {
-		status = '-';
-	} else if(!strncmp(co, "Charging", 8)) {
-		status = '+';
-	} else {
-		status = '?';
-	}
-
-	if (remcap < 0 || descap < 0)
-		return smprintf("invalid");
-
-	return smprintf("%.0f%%%c", ((float)remcap / (float)descap) * 100, status);
-}
-
-char *
-gettemperature(char *base, char *sensor)
-{
-	char *co;
-
-	co = readfile(base, sensor);
-	if (co == NULL)
-		return smprintf("");
-	return smprintf("%02.0f°C", atof(co) / 1000);
-}
-
-char *
 execscript(char *cmd)
 {
 	FILE *fp;
@@ -198,50 +124,71 @@ execscript(char *cmd)
 	return smprintf("%s", retval);
 }
 
+/* include this into your dwmstatus.c and use get_vol() as volume.
+ * if your audio card and subunit numbers differ from 0,0 you might havo
+ * to use amixer, aplay and the /proc/asound file tree to adapt.
+ *
+ * I had compilation issues. As result i had to drop the -std=c99 and
+ * -pedantic flags from the config.mk
+ */
+
+#include <alsa/asoundlib.h>
+#include <alsa/control.h>
+
+int
+get_vol(void)
+{
+    int vol;
+    snd_hctl_t *hctl;
+    snd_ctl_elem_id_t *id;
+    snd_ctl_elem_value_t *control;
+
+// To find card and subdevice: /proc/asound/, aplay -L, amixer controls
+    snd_hctl_open(&hctl, "hw:0", 0);
+    snd_hctl_load(hctl);
+
+    snd_ctl_elem_id_alloca(&id);
+    snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+
+// amixer controls
+    snd_ctl_elem_id_set_name(id, "Master Playback Volume");
+
+    snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
+
+    snd_ctl_elem_value_alloca(&control);
+    snd_ctl_elem_value_set_id(control, id);
+
+    snd_hctl_elem_read(elem, control);
+    vol = (int)snd_ctl_elem_value_get_integer(control,0);
+
+    snd_hctl_close(hctl);
+    return vol;
+}
+
 int
 main(void)
 {
 	char *status;
-	char *avgs;
-	char *bat;
-	char *tmar;
-	char *tmutc;
-	char *tmbln;
-	char *t0;
-	char *t1;
+	char *tmwar;
 	char *kbmap;
-	char *surfs;
+	int vol;
 
 	if (!(dpy = XOpenDisplay(NULL))) {
 		fprintf(stderr, "dwmstatus: cannot open display.\n");
 		return 1;
 	}
 
-	for (;;sleep(30)) {
-		avgs = loadavg();
-		bat = getbattery("/sys/class/power_supply/BAT0");
-		tmar = mktimes("%H:%M", tzargentina);
-		tmutc = mktimes("%H:%M", tzutc);
-		tmbln = mktimes("KW %W %a %d %b %H:%M %Z %Y", tzberlin);
+	for (;;usleep(250000)) {
+		tmwar = mktimes(" %a %d %b %Y %H:%M:%S %Z ", tzwarsaw);
 		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
-		surfs = execscript("surf-status");
-		t0 = gettemperature("/sys/devices/virtual/thermal/thermal_zone0", "temp");
-		t1 = gettemperature("/sys/devices/virtual/thermal/thermal_zone1", "temp");
+		vol   = get_vol();
 
-		status = smprintf("S:%s K:%s T:%s|%s L:%s B:%s A:%s U:%s %s",
-				surfs, kbmap, t0, t1, avgs, bat, tmar, tmutc,
-				tmbln);
+		status = smprintf("K:%s V:%d T:%s",
+				kbmap, vol, tmwar);
 		setstatus(status);
 
-		free(surfs);
 		free(kbmap);
-		free(t0);
-		free(t1);
-		free(avgs);
-		free(bat);
-		free(tmar);
-		free(tmutc);
-		free(tmbln);
+		free(tmwar);
 		free(status);
 	}
 
