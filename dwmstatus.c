@@ -229,6 +229,18 @@ void update_cpustat(struct cpustat **prev, struct cpustat **cur) {
 	get_cpustat(*cur);
 }
 
+long getmem() {
+    FILE *fp;
+    long total, free, available;
+
+    fp = fopen("/proc/meminfo", "r");
+    fscanf(fp, "MemTotal: %ld kB\n", &total);
+    fscanf(fp, "MemFree: %ld kB\n", &free);
+    fscanf(fp, "MemAvailable: %ld kB\n", &available);
+    fclose(fp);
+	return (100 * (total - available) / total);
+}
+
 int
 main(void)
 {
@@ -241,6 +253,7 @@ main(void)
 	struct cpustat *cpu_prev;
 	struct cpustat *cpu_cur;
 	long load;
+	long memory;
 	
 
 	if (!(dpy = XOpenDisplay(NULL))) {
@@ -256,13 +269,14 @@ main(void)
 			kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		if (time % DU_REFRESH == 0)
 			du    = get_freespace("/");
-		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		vol   = get_vol();
+		tmwar  = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
+		vol    = get_vol();
 		update_cpustat(&cpu_prev, &cpu_cur);
-		load = calculate_load(cpu_prev, cpu_cur);
+		load   = calculate_load(cpu_prev, cpu_cur);
+		memory = getmem();
 
-		status = smprintf(" \uF11C %s | \uF2DB %ld%% | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
-				kbmap, load, du, vol, tmwar);
+		status = smprintf(" \uF11C %s | \uF2DB %ld%% | \uF538 %ld%% | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
+				kbmap, load, memory, du, vol, tmwar);
 		setstatus(status);
 
 		if (time % KBMAP_REFRESH == 0)
