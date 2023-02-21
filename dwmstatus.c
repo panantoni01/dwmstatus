@@ -232,6 +232,7 @@ void update_cpustat(struct cpustat **prev, struct cpustat **cur) {
 int
 main(void)
 {
+	long time = 0;
 	char *status;
 	char *tmwar;
 	char *kbmap;
@@ -250,11 +251,13 @@ main(void)
 	cpustat_init(&cpu_prev);
 	cpustat_init(&cpu_cur);
 
-	for (;;sleep(1)) {
+	for (;;sleep(INTERVAL), time++) {
+		if (time % KBMAP_REFRESH == 0)
+			kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
+		if (time % DU_REFRESH == 0)
+			du    = get_freespace("/");
 		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		vol   = get_vol();
-		du    = get_freespace("/");
 		update_cpustat(&cpu_prev, &cpu_cur);
 		load = calculate_load(cpu_prev, cpu_cur);
 
@@ -262,10 +265,12 @@ main(void)
 				kbmap, load, du, vol, tmwar);
 		setstatus(status);
 
-		free(kbmap);
+		if (time % KBMAP_REFRESH == 0)
+			free(kbmap);
+		if (time % DU_REFRESH == 0)
+			free(du);
 		free(tmwar);
 		free(status);
-		free(du);
 	}
 
 	free(cpu_prev);

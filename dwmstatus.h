@@ -1,6 +1,11 @@
 #ifndef _DWMSTATUS_H
 #define _DWMSTATUS_H
 
+#define INTERVAL 1
+#define KBMAP_REFRESH 10 /* refresh kbmap every 10 INTERVALS*/
+#define DU_REFRESH 30    /* refresh du every 30 INTERVALS*/
+
+
 struct cpustat {
     unsigned long t_user;
     unsigned long t_nice;
