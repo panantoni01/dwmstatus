@@ -183,32 +183,27 @@ char *get_freespace(char *mntpt){
 }
 
 
-void get_cpustat(struct cpustat* st) {
+long cpustat() {
+	static struct cpustat st[2] = {
+		{0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0}
+	};
+	static int curr = 0;
+	int prev = 1 - curr;
 	FILE *fp;
 	char cpun[255];
 	
 	fp = fopen("/proc/stat", "r");
-    fscanf(fp, "%s %lu %lu %lu %lu %lu %lu %lu", cpun, &(st->t_user), &(st->t_nice),
-        &(st->t_system), &(st->t_idle), &(st->t_iowait), &(st->t_irq), &(st->t_softirq));
+    fscanf(fp, "%s %lu %lu %lu %lu %lu %lu %lu", cpun, &(st[curr].t_user), 
+		&(st[curr].t_nice), &(st[curr].t_system), &(st[curr].t_idle), &(st[curr].t_iowait), 
+		&(st[curr].t_irq), &(st[curr].t_softirq));
 	fclose(fp);
-}
 
-static inline void cpustat_init(struct cpustat** st) {
-    *st = (struct cpustat *) malloc(sizeof(struct cpustat));
-    if (*st == NULL) {
-		perror("malloc");
-		exit(1);
-	}
-	get_cpustat(*st);
-}
+	int idle_prev = (st[prev].t_idle) + (st[prev].t_iowait);
+    int idle_cur = (st[curr].t_idle) + (st[curr].t_iowait);
 
-long calculate_load(struct cpustat *prev, struct cpustat *cur)
-{
-    int idle_prev = (prev->t_idle) + (prev->t_iowait);
-    int idle_cur = (cur->t_idle) + (cur->t_iowait);
-
-    int nidle_prev = (prev->t_user) + (prev->t_nice) + (prev->t_system) + (prev->t_irq) + (prev->t_softirq);
-    int nidle_cur = (cur->t_user) + (cur->t_nice) + (cur->t_system) + (cur->t_irq) + (cur->t_softirq);
+    int nidle_prev = (st[prev].t_user) + (st[prev].t_nice) + (st[prev].t_system) + (st[prev].t_irq) + (st[prev].t_softirq);
+    int nidle_cur = (st[curr].t_user) + (st[curr].t_nice) + (st[curr].t_system) + (st[curr].t_irq) + (st[curr].t_softirq);
 
     int total_prev = idle_prev + nidle_prev;
     int total_cur = idle_cur + nidle_cur;
@@ -218,15 +213,8 @@ long calculate_load(struct cpustat *prev, struct cpustat *cur)
 
     double cpu_perc = (1000 * (totald - idled) / totald + 1) / 10;
 
-    return (long)cpu_perc;
-}
-
-void update_cpustat(struct cpustat **prev, struct cpustat **cur) {
-	free(*prev);
-	*prev = *cur;
-	
-	cpustat_init(cur);
-	get_cpustat(*cur);
+	curr = 1 - curr;
+	return (long)cpu_perc;
 }
 
 long getmem() {
@@ -262,9 +250,7 @@ main(void)
 	char *kbmap = NULL;
 	int vol = 0;
 	char* du = NULL;
-	struct cpustat *cpu_prev = NULL;
-	struct cpustat *cpu_cur = NULL;
-	long load = 0;
+	long cpu_perc = 0;
 	long memory = 0;
 	time_t sec10 = 0;
 	
@@ -274,9 +260,6 @@ main(void)
 		return 1;
 	}
 
-	cpustat_init(&cpu_prev);
-	cpustat_init(&cpu_cur);
-
 	for (;;sleep(1)) {
 		if (runevery(&sec10, 10)) {
 			free(kbmap);
@@ -285,22 +268,18 @@ main(void)
 			du    = get_freespace("/");
 		}
 		
-		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		vol   = get_vol();
-		update_cpustat(&cpu_prev, &cpu_cur);
-		load   = calculate_load(cpu_prev, cpu_cur);
-		memory = getmem();
+		tmwar    = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
+		vol      = get_vol();
+		cpu_perc = cpustat();
+		memory   = getmem();
 
 		status = smprintf(" \uF11C %s | \uF2DB %ld%% | \uF538 %ld%% | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
-				kbmap, load, memory, du, vol, tmwar);
+				kbmap, cpu_perc, memory, du, vol, tmwar);
 		setstatus(status);
 
 		free(tmwar);
 		free(status);
 	}
-
-	free(cpu_prev);
-	free(cpu_cur);
 
 	XCloseDisplay(dpy);
 
