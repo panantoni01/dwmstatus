@@ -244,7 +244,6 @@ long getmem() {
 int
 main(void)
 {
-	long time = 0;
 	char *status;
 	char *tmwar;
 	char *kbmap;
@@ -264,13 +263,11 @@ main(void)
 	cpustat_init(&cpu_prev);
 	cpustat_init(&cpu_cur);
 
-	for (;;sleep(INTERVAL), time++) {
-		if (time % KBMAP_REFRESH == 0)
-			kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
-		if (time % DU_REFRESH == 0)
-			du    = get_freespace("/");
-		tmwar  = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		vol    = get_vol();
+	for (;;sleep(1)) {
+		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
+		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
+		vol   = get_vol();
+		du    = get_freespace("/");
 		update_cpustat(&cpu_prev, &cpu_cur);
 		load   = calculate_load(cpu_prev, cpu_cur);
 		memory = getmem();
@@ -279,12 +276,10 @@ main(void)
 				kbmap, load, memory, du, vol, tmwar);
 		setstatus(status);
 
-		if (time % KBMAP_REFRESH == 0)
-			free(kbmap);
-		if (time % DU_REFRESH == 0)
-			free(du);
+		free(kbmap);
 		free(tmwar);
 		free(status);
+		free(du);
 	}
 
 	free(cpu_prev);
