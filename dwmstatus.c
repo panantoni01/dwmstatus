@@ -241,18 +241,32 @@ long getmem() {
 	return (100 * (total - available) / total);
 }
 
+int runevery(time_t *ltime, int sec){
+    /* return 1 if sec elapsed since last run
+     * else return 0 
+    */
+    time_t now = time(NULL);
+    if (difftime(now, *ltime ) >= sec){
+        *ltime = now;
+        return 1;
+    }
+    else 
+        return 0;
+}
+
 int
 main(void)
 {
-	char *status;
-	char *tmwar;
-	char *kbmap;
-	int vol;
-	char* du;
-	struct cpustat *cpu_prev;
-	struct cpustat *cpu_cur;
-	long load;
-	long memory;
+	char *status = NULL;
+	char *tmwar = NULL;
+	char *kbmap = NULL;
+	int vol = 0;
+	char* du = NULL;
+	struct cpustat *cpu_prev = NULL;
+	struct cpustat *cpu_cur = NULL;
+	long load = 0;
+	long memory = 0;
+	time_t sec10 = 0;
 	
 
 	if (!(dpy = XOpenDisplay(NULL))) {
@@ -264,10 +278,15 @@ main(void)
 	cpustat_init(&cpu_cur);
 
 	for (;;sleep(1)) {
+		if (runevery(&sec10, 10)) {
+			free(kbmap);
+			free(du);
+			kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
+			du    = get_freespace("/");
+		}
+		
 		tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		kbmap = execscript("setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
 		vol   = get_vol();
-		du    = get_freespace("/");
 		update_cpustat(&cpu_prev, &cpu_cur);
 		load   = calculate_load(cpu_prev, cpu_cur);
 		memory = getmem();
@@ -276,10 +295,8 @@ main(void)
 				kbmap, load, memory, du, vol, tmwar);
 		setstatus(status);
 
-		free(kbmap);
 		free(tmwar);
 		free(status);
-		free(du);
 	}
 
 	free(cpu_prev);
