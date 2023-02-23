@@ -172,6 +172,7 @@ get_vol(void)
 char *get_freespace(char *mntpt){
     struct statvfs data;
     double total, used = 0;
+	double result;
 
     if ( (statvfs(mntpt, &data)) < 0){
 		fprintf(stderr, "can't get info on disk.\n");
@@ -179,11 +180,17 @@ char *get_freespace(char *mntpt){
     }
     total = (data.f_blocks * data.f_frsize);
     used = (data.f_blocks - data.f_bfree) * data.f_frsize ;
-    return(smprintf("%.0f", (used/total*100)));
+    result = (used/total*100);
+
+	if (result > 80)
+		return(smprintf(RED"%.0f%%"RST, result));
+	if (result > 60)
+		return(smprintf(YEL"%.0f%%"RST, result));
+	return(smprintf("%.0f%%", result));
 }
 
 
-long cpustat() {
+char* cpustat() {
 	static struct cpustat st[2] = {
 		{0, 0, 0, 0, 0, 0, 0},
 		{0, 0, 0, 0, 0, 0, 0}
@@ -211,22 +218,32 @@ long cpustat() {
     double totald = (double) total_cur - (double) total_prev;
     double idled = (double) idle_cur - (double) idle_prev;
 
-    double cpu_perc = (1000 * (totald - idled) / totald + 1) / 10;
+    long cpu_perc = (long)((1000 * (totald - idled) / totald + 1) / 10);
 
 	curr = 1 - curr;
-	return (long)cpu_perc;
+	if (cpu_perc > 80)
+		return(smprintf(RED"%ld%%"RST, cpu_perc));
+	if (cpu_perc > 60)
+		return(smprintf(YEL"%ld%%"RST, cpu_perc));
+	return(smprintf("%ld%%", cpu_perc));
 }
 
-long getmem() {
+char* getmem() {
     FILE *fp;
-    long total, free, available;
+    long total, free, available, result;
 
     fp = fopen("/proc/meminfo", "r");
     fscanf(fp, "MemTotal: %ld kB\n", &total);
     fscanf(fp, "MemFree: %ld kB\n", &free);
     fscanf(fp, "MemAvailable: %ld kB\n", &available);
     fclose(fp);
-	return (100 * (total - available) / total);
+	result = (100 * (total - available) / total);
+
+	if (result > 80)
+		return(smprintf(RED"%ld%%"RST, result));
+	if (result > 60)
+		return(smprintf(YEL"%ld%%"RST, result));
+	return(smprintf("%ld%%", result));
 }
 
 int runevery(time_t *ltime, int sec){
@@ -250,8 +267,8 @@ main(void)
 	char *kbmap = NULL;
 	int vol = 0;
 	char* du = NULL;
-	long cpu_perc = 0;
-	long memory = 0;
+	char* cpu_perc = NULL;
+	char* memory = NULL;
 	time_t sec10 = 0;
 	
 
@@ -268,17 +285,19 @@ main(void)
 			du    = get_freespace("/");
 		}
 		
-		tmwar    = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-		vol      = get_vol();
 		cpu_perc = cpustat();
 		memory   = getmem();
+		vol      = get_vol();
+		tmwar    = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
 
-		status = smprintf(" \uF11C %s | \uF2DB %ld%% | \uF538 %ld%% | \uF0A0 %s%% | \uF027 %d%% | \uF017 %s",
+		status = smprintf(" \uF11C %s | \uF2DB %s | \uF538 %s | \uF0A0 %s | \uF027 %d%% | \uF017 %s",
 				kbmap, cpu_perc, memory, du, vol, tmwar);
 		setstatus(status);
 
 		free(tmwar);
 		free(status);
+		free(cpu_perc);
+		free(memory);
 	}
 
 	XCloseDisplay(dpy);
