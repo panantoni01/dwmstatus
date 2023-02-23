@@ -1,6 +1,8 @@
 #ifndef _DWMSTATUS_H
 #define _DWMSTATUS_H
 
+#include <time.h>
+
 /* colors */
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
@@ -17,6 +19,10 @@ struct cpustat {
     unsigned long t_softirq;
 };
 
+
+char* smprintf(char *, ...);
+char* execscript(char*);
+int runevery(time_t*, int);
 
 #endif /* _DWMSTATUS_H */
 
