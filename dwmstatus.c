@@ -17,6 +17,8 @@
 
 #include "util.h"
 
+char* cpustat();
+
 char *tzwarsaw = "Europe/Warsaw";
 
 static Display *dpy;
@@ -119,44 +121,6 @@ char *get_freespace(char *mntpt){ // du
 	return(smprintf("%.0f%%", result));
 }
 
-
-char* cpustat() { // cpustat
-	static struct cpustat st[2] = {
-		{0, 0, 0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0, 0, 0}
-	};
-	static int curr = 0;
-	int prev = 1 - curr;
-	FILE *fp;
-	char cpun[255];
-	
-	fp = fopen("/proc/stat", "r");
-    fscanf(fp, "%s %lu %lu %lu %lu %lu %lu %lu", cpun, &(st[curr].t_user), 
-		&(st[curr].t_nice), &(st[curr].t_system), &(st[curr].t_idle), &(st[curr].t_iowait), 
-		&(st[curr].t_irq), &(st[curr].t_softirq));
-	fclose(fp);
-
-	int idle_prev = (st[prev].t_idle) + (st[prev].t_iowait);
-    int idle_cur = (st[curr].t_idle) + (st[curr].t_iowait);
-
-    int nidle_prev = (st[prev].t_user) + (st[prev].t_nice) + (st[prev].t_system) + (st[prev].t_irq) + (st[prev].t_softirq);
-    int nidle_cur = (st[curr].t_user) + (st[curr].t_nice) + (st[curr].t_system) + (st[curr].t_irq) + (st[curr].t_softirq);
-
-    int total_prev = idle_prev + nidle_prev;
-    int total_cur = idle_cur + nidle_cur;
-
-    double totald = (double) total_cur - (double) total_prev;
-    double idled = (double) idle_cur - (double) idle_prev;
-
-    long cpu_perc = (long)((1000 * (totald - idled) / totald + 1) / 10);
-
-	curr = 1 - curr;
-	if (cpu_perc > 80)
-		return(smprintf(RED"%ld%%"RST, cpu_perc));
-	if (cpu_perc > 60)
-		return(smprintf(YEL"%ld%%"RST, cpu_perc));
-	return(smprintf("%ld%%", cpu_perc));
-}
 
 char* getmem() { // memory
     FILE *fp;
