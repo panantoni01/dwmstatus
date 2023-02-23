@@ -19,6 +19,7 @@
 
 char* cpustat();
 int get_vol();
+char* mktimes(char*, char*);
 
 char *tzwarsaw = "Europe/Warsaw";
 
@@ -30,34 +31,6 @@ setstatus(char *str)
 	XStoreName(dpy, DefaultRootWindow(dpy), str);
 	XSync(dpy, False);
 }
-
-void
-settz(char *tzname) // time
-{
-	setenv("TZ", tzname, 1);
-}
-
-char *
-mktimes(char *fmt, char *tzname) // time
-{
-	char buf[129];
-	time_t tim;
-	struct tm *timtm;
-
-	settz(tzname);
-	tim = time(NULL);
-	timtm = localtime(&tim);
-	if (timtm == NULL)
-		return smprintf("");
-
-	if (!strftime(buf, sizeof(buf)-1, fmt, timtm)) {
-		fprintf(stderr, "strftime == 0\n");
-		return smprintf("");
-	}
-
-	return smprintf("%s", buf);
-}
-
 
 #include <sys/statvfs.h>
 

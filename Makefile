@@ -2,7 +2,7 @@
 
 include config.mk
 
-SRC = ${NAME}.c util.c cpustat.c volume.c
+SRC = ${NAME}.c util.c cpustat.c volume.c datetime.c
 OBJ = ${SRC:.c=.o}
 
 all: options ${NAME}
