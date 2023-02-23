@@ -20,6 +20,7 @@
 char* cpustat();
 int get_vol();
 char* mktimes(char*, char*);
+char* get_freespace(char*);
 
 char *tzwarsaw = "Europe/Warsaw";
 
@@ -30,28 +31,6 @@ setstatus(char *str)
 {
 	XStoreName(dpy, DefaultRootWindow(dpy), str);
 	XSync(dpy, False);
-}
-
-#include <sys/statvfs.h>
-
-char *get_freespace(char *mntpt){ // du
-    struct statvfs data;
-    double total, used = 0;
-	double result;
-
-    if ( (statvfs(mntpt, &data)) < 0){
-		fprintf(stderr, "can't get info on disk.\n");
-		return("?");
-    }
-    total = (data.f_blocks * data.f_frsize);
-    used = (data.f_blocks - data.f_bfree) * data.f_frsize ;
-    result = (used/total*100);
-
-	if (result > 80)
-		return(smprintf(RED"%.0f%%"RST, result));
-	if (result > 60)
-		return(smprintf(YEL"%.0f%%"RST, result));
-	return(smprintf("%.0f%%", result));
 }
 
 
