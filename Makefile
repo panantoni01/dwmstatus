@@ -2,7 +2,7 @@
 
 include config.mk
 
-SRC = ${NAME}.c util.c cpustat.c volume.c datetime.c du.c memory.c
+SRC = $(addprefix src/, ${NAME}.c util.c cpustat.c volume.c datetime.c du.c memory.c)
 OBJ = ${SRC:.c=.o}
 
 all: options ${NAME}
@@ -13,9 +13,9 @@ options:
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
 
-.c.o:
+%.o: %.c
 	@echo CC $<
-	@${CC} -c ${CFLAGS} $<
+	@${CC} -c ${CFLAGS} -o $@ $<
 
 ${OBJ}: config.mk
 
