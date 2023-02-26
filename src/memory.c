@@ -14,8 +14,8 @@ char *getmem() {
   result = (100 * (total - available) / total);
 
   if (result > 80)
-    return (smprintf(RED "%ld%%" RST, result));
+    return (smprintf(COL_URG "%ld%%" COL_NORM, result));
   if (result > 60)
-    return (smprintf(YEL "%ld%%" RST, result));
+    return (smprintf(COL_WARN "%ld%%" COL_NORM, result));
   return (smprintf("%ld%%", result));
 }

@@ -18,8 +18,8 @@ char *get_freespace(char *mntpt) {
   result = (used / total * 100);
 
   if (result > 80)
-    return (smprintf(RED "%.0f%%" RST, result));
+    return (smprintf(COL_URG "%.0f%%" COL_NORM, result));
   if (result > 60)
-    return (smprintf(YEL "%.0f%%" RST, result));
+    return (smprintf(COL_URG "%.0f%%" COL_NORM, result));
   return (smprintf("%.0f%%", result));
 }

@@ -38,8 +38,8 @@ char *cpustat() {
 
   curr = 1 - curr;
   if (cpu_perc > 80)
-    return (smprintf(RED "%ld%%" RST, cpu_perc));
+    return (smprintf(COL_URG "%ld%%" COL_NORM, cpu_perc));
   if (cpu_perc > 60)
-    return (smprintf(YEL "%ld%%" RST, cpu_perc));
+    return (smprintf(COL_WARN "%ld%%" COL_NORM, cpu_perc));
   return (smprintf("%ld%%", cpu_perc));
 }
