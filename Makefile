@@ -2,7 +2,7 @@
 
 include config.mk
 
-SRC = $(addprefix src/, ${NAME}.c util.c cpustat.c volume.c datetime.c du.c memory.c)
+SRC = $(addprefix src/, ${NAME}.c util.c cpustat.c volume.c datetime.c du.c memory.c new-acpi-battery.c)
 OBJ = ${SRC:.c=.o}
 
 all: options ${NAME}

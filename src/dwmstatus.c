@@ -22,6 +22,7 @@ int get_vol();
 char *mktimes(char *, char *);
 char *get_freespace(char *);
 char *getmem();
+char* getbattery(const char*);
 
 char *tzwarsaw = "Europe/Warsaw";
 
@@ -40,6 +41,7 @@ int main(void) {
   char *du = NULL;
   char *cpu_perc = NULL;
   char *memory = NULL;
+  char* bat = NULL;
   time_t sec10 = 0;
 
   if (!(dpy = XOpenDisplay(NULL))) {
@@ -51,19 +53,20 @@ int main(void) {
     if (runevery(&sec10, 10)) {
       free(kbmap);
       free(du);
+      free(bat);
       kbmap = execscript(
         "setxkbmap -query | grep layout | cut -d':' -f 2- | tr -d ' '");
       du = get_freespace("/");
+      bat = getbattery("/sys/class/power_supply/BAT0");
     }
 
     cpu_perc = cpustat();
     memory = getmem();
     vol = get_vol();
     tmwar = mktimes("%a %d %b %Y %H:%M:%S ", tzwarsaw);
-
     status = smprintf(" \uF11C %s | \uF2DB %s | \uF538 %s | \uF0A0 %s | "
-                      "\uF027 %d%% | \uF017 %s",
-                      kbmap, cpu_perc, memory, du, vol, tmwar);
+                      "\uF027 %d%% | \uF017 %s | \uF242 %s",
+                      kbmap, cpu_perc, memory, du, vol, tmwar, bat);
     setstatus(status);
 
     free(tmwar);
